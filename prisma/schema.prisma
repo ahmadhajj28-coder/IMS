@@ -1,0 +1,102 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum MovementType {
+  IN
+  OUT
+  ADJUST
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Product {
+  id                Int             @id @default(autoincrement())
+  name              String
+  sku               String          @unique
+  category          String?
+  price             Decimal         @db.Decimal(10, 2)
+  quantity          Int             @default(0)
+  lowStockThreshold Int             @default(0)
+  lots              Lot[]
+  movements         StockMovement[]
+  reorderRules      ReorderRule[]
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+}
+
+model Lot {
+  id         Int      @id @default(autoincrement())
+  product    Product  @relation(fields: [productId], references: [id])
+  productId  Int
+  lotNumber  String
+  expiryDate DateTime?
+  quantity   Int      @default(0)
+  movements  StockMovement[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([productId])
+}
+
+model StockMovement {
+  id           Int          @id @default(autoincrement())
+  product      Product      @relation(fields: [productId], references: [id])
+  productId    Int
+  lot          Lot?         @relation(fields: [lotId], references: [id])
+  lotId        Int?
+  type         MovementType
+  quantity     Int
+  reason       String?
+  reference    String?
+  movementDate DateTime
+  previousQty  Int
+  newQty       Int
+  createdAt    DateTime     @default(now())
+
+  @@index([productId])
+  @@index([lotId])
+  @@index([movementDate])
+}
+
+model Supplier {
+  id          Int          @id @default(autoincrement())
+  name        String
+  email       String?
+  phone       String?
+  address     String?
+  reorderRules ReorderRule[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model ReorderRule {
+  id          Int       @id @default(autoincrement())
+  product     Product?  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId   Int?
+  minStock    Int
+  maxStock    Int       @default(9999)
+  reorderQty  Int
+  supplier    Supplier? @relation(fields: [supplierId], references: [id])
+  supplierId  Int?
+  createdAt   DateTime  @default(now())
+
+  @@index([productId])
+  @@index([supplierId])
+}
